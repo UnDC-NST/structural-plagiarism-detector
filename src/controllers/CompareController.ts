@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { Request, Response, NextFunction } from "express";
+import { Request, Response } from "express";
 import {
   IParserService,
   INormalizerService,
@@ -9,11 +9,27 @@ import {
   SupportedLanguage,
   FrequencyVector,
 } from "../types";
-import { UnsupportedLanguageError } from "../services/ParserService";
+import { IOrganizationService } from "../services/OrganizationService";
+import { asyncHandler } from "../utils/asyncHandler";
+import { AppError } from "../utils/AppError";
+import { logger } from "../utils/logger";
+import { toConfidence } from "../services/SimilarityService";
+import { FLAG_THRESHOLD } from "../utils/constants";
 
+// ── Constants ─────────────────────────────────────────────────────────────────
+const BULK_MAX_FILES = 50;
+const BULK_MAX_PAIRS = 3000; // 78 files × 77 = ~6006, so 50 files (2450) is within this
+
+// ── Validation schemas ────────────────────────────────────────────────────────
 const CompareSchema = z.object({
-  codeA: z.string().min(1).max(50_000),
-  codeB: z.string().min(1).max(50_000),
+  codeA: z
+    .string()
+    .min(1, "codeA is required")
+    .max(100_000, "codeA exceeds 100KB"),
+  codeB: z
+    .string()
+    .min(1, "codeB is required")
+    .max(100_000, "codeB exceeds 100KB"),
   language: z.enum(["python"]),
 });
 
@@ -21,24 +37,38 @@ const BulkAnalyzeSchema = z.object({
   submissions: z
     .array(
       z.object({
-        code: z.string().min(1).max(50_000),
-        label: z.string().optional(),
+        code: z
+          .string()
+          .min(1, "code is required")
+          .max(50_000, "code exceeds 50KB per file"),
+        label: z.string().max(200).optional(),
       }),
     )
-    .min(2, "Provide at least 2 submissions"),
+    .min(2, "Provide at least 2 submissions")
+    .max(BULK_MAX_FILES, `Maximum ${BULK_MAX_FILES} submissions per request`),
   language: z.enum(["python"]),
 });
-
-const FLAG_THRESHOLD = 0.75;
 
 /**
  * CompareController
  *
- * DIP — Constructor-injected interface dependencies only.
- * SRP — Direct comparisons only; no DB access.
+ * DIP  — Constructor-injected interface dependencies only.
+ * SRP  — Direct comparisons only; no DB access.
  *
- * Bulk analysis: vectors pre-computed once (not O(n²) re-parsing).
- * Event loop: `setImmediate` yields between batches to avoid blocking Node.js.
+ * Endpoints:
+ *   POST /api/v1/compare        — 1v1 direct comparison with metadata
+ *   POST /api/v1/compare/bulk   — pairwise matrix + suspicious pairs
+ *
+ * Safety guardrails:
+ *   - Max 50 files per bulk request (Zod)
+ *   - Max 3000 pairs computed (derived from n*(n-1))
+ *   - setImmediate every 5 pairs — non-blocking event loop
+ *
+ * Observability:
+ *   - Parse + vectorize duration
+ *   - Similarity compute duration
+ *   - Total request duration
+ *   - Heap usage (MB)
  */
 export class CompareController {
   constructor(
@@ -47,16 +77,20 @@ export class CompareController {
     private readonly serializer: ISerializerService,
     private readonly vectorizer: IVectorizerService,
     private readonly similarity: ISimilarityService,
+    private readonly organizationService?: IOrganizationService,
   ) {}
 
   // ── POST /api/v1/compare ──────────────────────────────────────────────────
 
-  public async compare(
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> {
-    try {
+  public readonly compare = asyncHandler(
+    async (req: Request, res: Response) => {
+      const org = req.organization;
+      
+      // Check organization comparison limits (1 comparison)
+      if (org && this.organizationService) {
+        this.organizationService.checkLimits(org, "comparison");
+      }
+
       const { codeA, codeB, language } = CompareSchema.parse(req.body);
 
       const vecA = this.pipeline(codeA, language as SupportedLanguage);
@@ -64,92 +98,137 @@ export class CompareController {
       const score = this.similarity.computeSimilarity(vecA, vecB);
       const shared = this.similarity.sharedTokenCount(vecA, vecB);
 
+      // Track organization usage (1 comparison)
+      if (org && this.organizationService) {
+        await this.organizationService.updateUsage(org._id.toString(), "comparison", 1);
+      }
+
       res.status(200).json({
         similarityScore: score,
+        confidence: toConfidence(score),
+        flagged: score >= FLAG_THRESHOLD,
         metadata: {
           sharedNodes: shared,
           totalNodesA: vecA.size,
           totalNodesB: vecB.size,
         },
       });
-    } catch (err) {
-      if (err instanceof z.ZodError) {
-        res.status(400).json({ error: err.errors });
-        return;
-      }
-      if (err instanceof UnsupportedLanguageError) {
-        res.status(400).json({ error: err.message });
-        return;
-      }
-      next(err);
-    }
-  }
+    },
+  );
 
   // ── POST /api/v1/compare/bulk ─────────────────────────────────────────────
 
-  public async bulkAnalyze(
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> {
-    try {
+  public readonly bulkAnalyze = asyncHandler(
+    async (req: Request, res: Response) => {
+      const org = req.organization;
+      const requestStart = Date.now();
       const { submissions, language } = BulkAnalyzeSchema.parse(req.body);
 
-      // Pre-vectorize all entries once — O(n) not O(n²) re-parsing
+      const n = submissions.length;
+      const pairs = n * (n - 1); // directional pairs (i→j and j→i)
+
+      // Hard guardrail: reject before any computation if pair count too high
+      if (pairs > BULK_MAX_PAIRS * 2) {
+        throw new AppError(
+          400,
+          `Too many comparisons: ${pairs / 2} pairs from ${n} files. Max allowed: ${BULK_MAX_PAIRS}.`,
+        );
+      }
+
+      // ── Phase 1: Pre-vectorize all files once (O(n)) ──────────────────────
+      const vecStart = Date.now();
       const entries: { label: string; vector: FrequencyVector }[] =
         submissions.map((s, i) => ({
           label: s.label ?? `submission_${i + 1}`,
           vector: this.pipeline(s.code, language as SupportedLanguage),
         }));
+      const vecMs = Date.now() - vecStart;
 
-      // Pairwise comparison — yield to event loop every 5 pairs to stay non-blocking
-      const results: object[] = [];
-      let pairsProcessed = 0;
+      // ── Phase 2: Pairwise comparison + build matrix (O(n²/2)) ─────────────
+      const simStart = Date.now();
+      let processed = 0;
 
-      for (let i = 0; i < entries.length; i++) {
-        const a = entries[i];
-        const matches: object[] = [];
+      // n×n matrix of similarity scores (diagonal = 1.0)
+      const matrix: number[][] = Array.from({ length: n }, () =>
+        Array(n).fill(0),
+      );
+      const suspiciousPairs: Array<{
+        labelA: string;
+        labelB: string;
+        score: number;
+        confidence: string;
+        sharedNodes: number;
+      }> = [];
 
-        for (let j = 0; j < entries.length; j++) {
-          if (j === i) continue;
+      for (let i = 0; i < n; i++) {
+        matrix[i][i] = 1.0;
+        for (let j = i + 1; j < n; j++) {
+          const a = entries[i];
           const b = entries[j];
           const score = this.similarity.computeSimilarity(a.vector, b.vector);
           const shared = this.similarity.sharedTokenCount(a.vector, b.vector);
 
-          matches.push({
-            againstLabel: b.label,
-            similarityScore: score,
-            flagged: score >= FLAG_THRESHOLD,
-            sharedNodes: shared,
-          });
+          matrix[i][j] = score;
+          matrix[j][i] = score;
 
-          // Yield to event loop every 5 pair-comparisons to avoid blocking
-          pairsProcessed++;
-          if (pairsProcessed % 5 === 0) {
+          if (score >= FLAG_THRESHOLD) {
+            suspiciousPairs.push({
+              labelA: a.label,
+              labelB: b.label,
+              score,
+              confidence: toConfidence(score),
+              sharedNodes: shared,
+            });
+          }
+
+          // Yield to event loop every 5 pairs — keeps Node.js non-blocking
+          if (++processed % 5 === 0) {
             await new Promise<void>((r) => setImmediate(r));
           }
         }
-
-        results.push({ label: a.label, matches });
       }
 
-      res.status(200).json({ results });
-    } catch (err) {
-      if (err instanceof z.ZodError) {
-        res.status(400).json({ error: err.errors });
-        return;
+      const simMs = Date.now() - simStart;
+      const totalMs = Date.now() - requestStart;
+      const heapMb = Math.round(process.memoryUsage().heapUsed / 1_048_576);
+
+      // Sort suspicious pairs high→low
+      suspiciousPairs.sort((a, b) => b.score - a.score);
+
+      // Track organization usage (n*(n-1)/2 comparisons)
+      if (org && this.organizationService) {
+        const numComparisons = (n * (n - 1)) / 2;
+        await this.organizationService.updateUsage(org._id.toString(), "comparison", numComparisons);
       }
-      if (err instanceof UnsupportedLanguageError) {
-        res.status(400).json({ error: err.message });
-        return;
-      }
-      next(err);
-    }
-  }
+
+      // ── Observability log ──────────────────────────────────────────────────
+      logger.info("bulk_analyze", {
+        files: n,
+        pairs: processed,
+        vectorize_ms: vecMs,
+        similarity_ms: simMs,
+        total_ms: totalMs,
+        heap_mb: heapMb,
+        flagged: suspiciousPairs.length,
+      });
+
+      res.status(200).json({
+        labels: entries.map((e) => e.label),
+        matrix,
+        suspiciousPairs,
+        metadata: {
+          files: n,
+          pairs: processed,
+          totalMs,
+          heapMb,
+          flagThreshold: FLAG_THRESHOLD,
+        },
+      });
+    },
+  );
 
   // ── Private pipeline helper ───────────────────────────────────────────────
 
-  /** parse → normalize → serialize → vectorize */
   private pipeline(code: string, language: SupportedLanguage): FrequencyVector {
     const tree = this.parser.parse(code, language);
     const ir = this.normalizer.normalize(tree);
