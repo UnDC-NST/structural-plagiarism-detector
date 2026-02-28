@@ -1,0 +1,110 @@
+{
+  "info": {
+    "name": "Structural Plagiarism API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/health",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["health"]
+        }
+      }
+    },
+    {
+      "name": "1. Store Submission",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "x-api-key", "value": "test-key-123", "type": "text" },
+          { "key": "Content-Type", "value": "application/json", "type": "text" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"code\": \"def calculate_total(items):\\n    total = 0\\n    for item in items:\\n        if item.price > 0:\\n            total += item.price\\n    return total\",\n  \"language\": \"python\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/v1/submissions",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "v1", "submissions"]
+        }
+      }
+    },
+    {
+      "name": "2. Analyze Code (Compare with DB)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "x-api-key", "value": "test-key-123", "type": "text" },
+          { "key": "Content-Type", "value": "application/json", "type": "text" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"code\": \"def get_sum(elements):\\n    s = 0\\n    for e in elements:\\n        if e.cost > 0:\\n            s += e.cost\\n    return s\",\n  \"language\": \"python\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/v1/analyze",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "v1", "analyze"]
+        }
+      }
+    },
+    {
+      "name": "3. Compare 2 Snippets directly",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "x-api-key", "value": "test-key-123", "type": "text" },
+          { "key": "Content-Type", "value": "application/json", "type": "text" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"codeA\": \"def a(x): return x+1\",\n  \"codeB\": \"def b(n): return n+1\",\n  \"language\": \"python\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/v1/compare",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "v1", "compare"]
+        }
+      }
+    },
+    {
+      "name": "4. Bulk Analyze List",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "x-api-key", "value": "test-key-123", "type": "text" },
+          { "key": "Content-Type", "value": "application/json", "type": "text" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"submissions\": [\n    {\"code\": \"def foo(x): return x*2\", \"label\": \"A\"},\n    {\"code\": \"def bar(n): return n*2\", \"label\": \"B\"},\n    {\"code\": \"for i in range(10): print(i)\", \"label\": \"C\"}\n  ],\n  \"language\": \"python\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/v1/compare/bulk",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "v1", "compare", "bulk"]
+        }
+      }
+    }
+  ]
+}
