@@ -18,11 +18,13 @@ export class SubmissionService implements ISubmissionService {
     rawCode: string,
     serialized: string,
     language: string,
+    organizationId?: string,
   ): Promise<string> {
     const doc = await Submission.create({
       rawCode,
       serializedStructure: serialized,
       language,
+      organizationId,
     });
     return doc._id.toString();
   }
@@ -34,6 +36,24 @@ export class SubmissionService implements ISubmissionService {
   public async getAllSerialized(language: string): Promise<CorpusEntry[]> {
     const docs = await Submission.find(
       { language },
+      { _id: 1, serializedStructure: 1 },
+    ).lean();
+
+    return docs.map((d) => ({
+      id: (d._id as object).toString(),
+      serialized: d.serializedStructure,
+    }));
+  }
+
+  /**
+   * Retrieve all serialized structures for a language and organization.
+   */
+  public async getAllSerializedForOrg(
+    language: string,
+    organizationId: string
+  ): Promise<CorpusEntry[]> {
+    const docs = await Submission.find(
+      { language, organizationId },
       { _id: 1, serializedStructure: 1 },
     ).lean();
 
