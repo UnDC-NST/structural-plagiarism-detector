@@ -1,17 +1,16 @@
 import Parser from "tree-sitter";
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const Python = require("tree-sitter-python");
+import Python from "tree-sitter-python";
 import { IParserService, SupportedLanguage } from "../types";
+import { AppError } from "../utils/AppError";
 
 /**
  * ParserService
  *
  * SRP  — Only responsible for turning raw source code into a Tree-sitter Tree.
- * OCP  — New languages are added via `registerLanguage`, existing logic untouched.
- * Singleton — Parser instance created once; reused across every request.
+ * OCP  — New languages added via registerLanguage without touching parse logic.
+ * Singleton — One shared Tree-sitter parser instance per process.
  */
 export class ParserService implements IParserService {
-  // ── Singleton ───────────────────────────────────────────────────────────────
   private static instance: ParserService;
 
   private readonly parser: Parser;
@@ -23,7 +22,6 @@ export class ParserService implements IParserService {
     this.registerLanguage("python", Python);
   }
 
-  /** Get or create the single shared parser instance. */
   public static getInstance(): ParserService {
     if (!ParserService.instance) {
       ParserService.instance = new ParserService();
@@ -31,12 +29,10 @@ export class ParserService implements IParserService {
     return ParserService.instance;
   }
 
-  // ── OCP: register additional languages without modifying this method ─────
   private registerLanguage(lang: SupportedLanguage, grammar: object): void {
     this.languageRegistry.set(lang, grammar);
   }
 
-  // ── IParserService ──────────────────────────────────────────────────────────
   public parse(code: string, language: SupportedLanguage): Parser.Tree {
     const grammar = this.languageRegistry.get(language);
     if (!grammar) {
@@ -49,10 +45,13 @@ export class ParserService implements IParserService {
   }
 }
 
-// ── Custom error — allows controllers to map to HTTP 400 ─────────────────────
-export class UnsupportedLanguageError extends Error {
+/**
+ * UnsupportedLanguageError extends AppError so the centralised errorHandler
+ * automatically maps it to HTTP 400 without any controller try/catch logic.
+ */
+export class UnsupportedLanguageError extends AppError {
   constructor(lang: string) {
-    super(`Unsupported language: "${lang}". Supported: python`);
+    super(400, `Unsupported language: "${lang}". Supported: python`);
     this.name = "UnsupportedLanguageError";
   }
 }
