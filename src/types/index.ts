@@ -143,8 +143,10 @@ export interface ISubmissionService {
     rawCode: string,
     serialized: string,
     language: string,
+    organizationId?: string,
   ): Promise<string>;
   getAllSerialized(language: string): Promise<CorpusEntry[]>;
+  getAllSerializedForOrg(language: string, organizationId: string): Promise<CorpusEntry[]>;
   findById(
     id: string,
   ): Promise<{ _id: string; language: string; createdAt: Date } | null>;
