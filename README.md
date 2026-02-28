@@ -594,6 +594,7 @@ RATE_LIMIT_WINDOW_MS=60000     # Longer time window (ms)
 - **[PROJECT_SUMMARY.md](PROJECT_SUMMARY.md)**: 📄 **One-page overview** - Complete overview for presentations
 
 ### 📚 For Implementation & Deployment
+- **[ER_DIAGRAM.md](ER_DIAGRAM.md)**: 🗄️ **Database schema** - ER diagrams with Mermaid, relationships, indexes
 - **[ORGANIZATIONS.md](ORGANIZATIONS.md)**: 🏢 **Organization guide** - Registration, API keys, plans, usage tracking
 - **[SYSTEM_DESIGN.md](SYSTEM_DESIGN.md)**: 🏗️ **Architecture deep dive** - Design patterns, trade-offs, scalability
 - **[DEPLOYMENT.md](DEPLOYMENT.md)**: 🚀 **Production guide** - Docker, Kubernetes, troubleshooting
