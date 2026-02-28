@@ -1,0 +1,67 @@
+# Prometheus Configuration for Structural Plagiarism Detector
+# This file configures Prometheus to scrape metrics from the API service
+
+global:
+  scrape_interval: 15s # Default scrape interval
+  evaluation_interval: 15s # How frequently to evaluate rules
+  external_labels:
+    cluster: 'plagiarism-detector'
+    environment: 'production'
+
+# Alertmanager configuration (optional)
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets:
+#           - alertmanager:9093
+
+# Rule files for alerting (optional)
+# rule_files:
+#   - "alerts/*.yml"
+
+# Scrape configurations
+scrape_configs:
+  # Plagiarism Detection API
+  - job_name: 'plagiarism-api'
+    scrape_interval: 10s
+    scrape_timeout: 5s
+    metrics_path: '/metrics/prometheus'
+    static_configs:
+      - targets: ['api:3000']
+        labels:
+          service: 'plagiarism-detector'
+          component: 'api'
+    
+    # Health check endpoint monitoring
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'up'
+        target_label: 'health'
+        replacement: 'liveness'
+
+  # MongoDB Exporter (if using mongodb_exporter sidecar)
+  # - job_name: 'mongodb'
+  #   scrape_interval: 30s
+  #   static_configs:
+  #     - targets: ['mongodb-exporter:9216']
+  #       labels:
+  #         service: 'plagiarism-detector'
+  #         component: 'database'
+
+  # Node Exporter for system metrics (if deployed)
+  # - job_name: 'node'
+  #   scrape_interval: 30s
+  #   static_configs:
+  #     - targets: ['node-exporter:9100']
+  #       labels:
+  #         service: 'plagiarism-detector'
+  #         component: 'infrastructure'
+
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          service: 'monitoring'
+          component: 'prometheus'
