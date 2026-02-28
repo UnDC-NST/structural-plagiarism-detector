@@ -31,6 +31,7 @@ export class InMemorySubmissionService implements ISubmissionService {
     rawCode: string,
     serialized: string,
     language: string,
+    organizationId?: string,
   ): Promise<string> {
     const id = randomUUID();
     this.store.set(id, {
@@ -51,6 +52,17 @@ export class InMemorySubmissionService implements ISubmissionService {
       }
     }
     return results;
+  }
+
+  /**
+   * In-memory implementation: organization isolation not supported
+   */
+  public async getAllSerializedForOrg(
+    language: string,
+    organizationId: string
+  ): Promise<CorpusEntry[]> {
+    // In-memory mode doesn't support organization isolation
+    return this.getAllSerialized(language);
   }
 
   public async findById(
