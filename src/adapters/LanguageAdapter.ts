@@ -1,29 +1,18 @@
 import { SupportedLanguage } from "../types";
 
-/**
- * LanguageAdapter — defines the contract for adding new language support.
- *
- * OCP: To add Java/C++ support, implement this interface and
- *      register it in ParserService.languageRegistry.
- *      Zero changes to existing services.
- */
 export interface LanguageAdapter {
   readonly language: SupportedLanguage;
-  /** Returns the tree-sitter grammar object for this language. */
+  
   getGrammar(): object;
-  /** Optional: language-specific node types that are ALWAYS structural (never dropped). */
+  
   alwaysKeep?(): string[];
 }
 
-/**
- * PythonAdapter — concrete adapter for Python (tree-sitter-python).
- * Currently the only supported language.
- */
 export class PythonAdapter implements LanguageAdapter {
   public readonly language: SupportedLanguage = "python";
 
   public getGrammar(): object {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    
     return require("tree-sitter-python");
   }
 

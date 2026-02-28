@@ -3,9 +3,6 @@ import { AppError } from "../utils/AppError";
 import { logger } from "../utils/logger";
 import crypto from "crypto";
 
-/**
- * Service for managing organizations and their usage
- */
 export interface IOrganizationService {
   findByApiKey(apiKey: string): Promise<IOrganization | null>;
   create(data: CreateOrganizationDto): Promise<IOrganization>;
@@ -41,46 +38,41 @@ export interface UsageStats {
   resetDate: Date;
 }
 
-/**
- * Plan limits configuration
- */
 const PLAN_LIMITS = {
   free: {
     maxSubmissionsPerMonth: 100,
     maxComparisonsPerMonth: 500,
-    maxFileSizeBytes: 1048576, // 1MB
+    maxFileSizeBytes: 1048576, 
     maxBulkFiles: 10,
   },
   basic: {
     maxSubmissionsPerMonth: 1000,
     maxComparisonsPerMonth: 5000,
-    maxFileSizeBytes: 5242880, // 5MB
+    maxFileSizeBytes: 5242880, 
     maxBulkFiles: 25,
   },
   pro: {
     maxSubmissionsPerMonth: 10000,
     maxComparisonsPerMonth: 50000,
-    maxFileSizeBytes: 10485760, // 10MB
+    maxFileSizeBytes: 10485760, 
     maxBulkFiles: 50,
   },
   enterprise: {
-    maxSubmissionsPerMonth: -1, // Unlimited
-    maxComparisonsPerMonth: -1, // Unlimited
-    maxFileSizeBytes: 52428800, // 50MB
+    maxSubmissionsPerMonth: -1, 
+    maxComparisonsPerMonth: -1, 
+    maxFileSizeBytes: 52428800, 
     maxBulkFiles: 100,
   },
 };
 
 export class OrganizationService implements IOrganizationService {
-  /**
-   * Find organization by API key
-   */
+  
   async findByApiKey(apiKey: string): Promise<IOrganization | null> {
     try {
       const org = await Organization.findOne({ apiKey, isActive: true });
       
       if (org) {
-        // Reset usage if new month (cast to access Mongoose document methods)
+        
         (org as any).resetUsageIfNeeded();
         if (org.isModified()) {
           await org.save();
@@ -94,21 +86,19 @@ export class OrganizationService implements IOrganizationService {
     }
   }
 
-  /**
-   * Create a new organization
-   */
+  
   async create(data: CreateOrganizationDto): Promise<IOrganization> {
     try {
-      // Check if organization with email already exists
+      
       const existing = await Organization.findOne({ email: data.email });
       if (existing) {
         throw new AppError(409, "Organization with this email already exists");
       }
 
-      // Generate unique API key
+      
       const apiKey = this.generateApiKey();
 
-      // Get plan limits
+      
       const plan = data.plan || "free";
       const limits = PLAN_LIMITS[plan];
 
@@ -142,9 +132,7 @@ export class OrganizationService implements IOrganizationService {
     }
   }
 
-  /**
-   * Update organization usage
-   */
+  
   async updateUsage(
     orgId: string,
     type: "submission" | "comparison",
@@ -156,10 +144,10 @@ export class OrganizationService implements IOrganizationService {
         throw new AppError(404, "Organization not found");
       }
 
-      // Reset usage if needed (cast to access Mongoose document methods)
+      
       (org as any).resetUsageIfNeeded();
 
-      // Increment usage
+      
       if (type === "submission") {
         await (org as any).incrementSubmissionUsage();
       } else {
@@ -175,15 +163,13 @@ export class OrganizationService implements IOrganizationService {
     } catch (error) {
       if (error instanceof AppError) throw error;
       logger.error("Error updating organization usage", { error, orgId, type });
-      // Don't throw - usage tracking failure shouldn't break the API
+      
     }
   }
 
-  /**
-   * Check if organization has exceeded limits
-   */
+  
   checkLimits(org: IOrganization, type: "submission" | "comparison"): void {
-    // Enterprise plan has unlimited usage
+    
     if (org.plan === "enterprise") {
       return;
     }
@@ -203,9 +189,7 @@ export class OrganizationService implements IOrganizationService {
     }
   }
 
-  /**
-   * Get usage statistics for an organization
-   */
+  
   async getUsageStats(orgId: string): Promise<UsageStats> {
     try {
       const org = await Organization.findById(orgId);
@@ -213,7 +197,7 @@ export class OrganizationService implements IOrganizationService {
         throw new AppError(404, "Organization not found");
       }
 
-      // Reset usage if needed (cast to access Mongoose document methods)
+      
       (org as any).resetUsageIfNeeded();
 
       const submissionLimit = org.limits.maxSubmissionsPerMonth;
@@ -252,9 +236,7 @@ export class OrganizationService implements IOrganizationService {
     }
   }
 
-  /**
-   * Generate a secure API key
-   */
+  
   private generateApiKey(): string {
     return `spd_${crypto.randomBytes(32).toString("hex")}`;
   }

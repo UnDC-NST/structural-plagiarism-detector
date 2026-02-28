@@ -1,10 +1,4 @@
-/**
- * logger.ts — centralised structured logging utility.
- *
- * Uses the native console API so no extra dependencies are required.
- * In production, replace with Winston or Pino for JSON output + log aggregation
- * by swapping the implementations below without touching call sites.
- */
+
 
 type LogLevel = "debug" | "info" | "warn" | "error";
 
@@ -17,7 +11,7 @@ function formatMessage(
 ): string {
   const ts = new Date().toISOString();
   if (IS_PROD) {
-    // Structured JSON in production — works with Datadog, Papertrail, etc.
+    
     return JSON.stringify({ level, message, timestamp: ts, ...meta });
   }
   const prefix = `[${ts}] [${level.toUpperCase()}]`;

@@ -1,19 +1,8 @@
 import { ISubmissionService, CorpusEntry } from "../types";
 import { Submission } from "../models/Submission";
 
-/**
- * SubmissionService
- *
- * SRP — Only responsible for CRUD operations on Submission documents.
- *        No parsing, no similarity logic lives here.
- * DIP — Controllers depend on ISubmissionService, not this concrete class.
- *        Swap to a different DB adapter by implementing ISubmissionService.
- */
 export class SubmissionService implements ISubmissionService {
-  /**
-   * Persist rawCode + serialized structure.
-   * @returns The new document's MongoDB _id as string.
-   */
+  
   public async saveSubmission(
     rawCode: string,
     serialized: string,
@@ -29,10 +18,7 @@ export class SubmissionService implements ISubmissionService {
     return doc._id.toString();
   }
 
-  /**
-   * Retrieve all serialized structures for a language.
-   * Used by AnalyzeController when scanning the corpus.
-   */
+  
   public async getAllSerialized(language: string): Promise<CorpusEntry[]> {
     const docs = await Submission.find(
       { language },
@@ -45,9 +31,7 @@ export class SubmissionService implements ISubmissionService {
     }));
   }
 
-  /**
-   * Retrieve all serialized structures for a language and organization.
-   */
+  
   public async getAllSerializedForOrg(
     language: string,
     organizationId: string
@@ -63,10 +47,7 @@ export class SubmissionService implements ISubmissionService {
     }));
   }
 
-  /**
-   * Fetch a single submission for the GET /submissions/:id endpoint.
-   * Returns null when not found — caller maps to 404.
-   */
+  
   public async findById(
     id: string,
   ): Promise<{ _id: string; language: string; createdAt: Date } | null> {

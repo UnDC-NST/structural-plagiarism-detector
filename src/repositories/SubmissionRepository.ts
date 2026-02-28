@@ -3,14 +3,6 @@ import { CircuitBreaker, CircuitBreakerRegistry } from "../utils/CircuitBreaker"
 import { MetricsService } from "../services/MetricsService";
 import { logger } from "../utils/logger";
 
-/**
- * ISubmissionRepository — Repository interface for data access
- *
- * Design Principles:
- * - Repository Pattern: Abstract data access logic
- * - Dependency Inversion: Controllers depend on interface, not implementation
- * - Single Responsibility: Only handles data persistence operations
- */
 export interface ISubmissionRepository {
   create(data: {
     rawCode: string;
@@ -39,15 +31,6 @@ export interface ISubmissionRepository {
   exists(id: string): Promise<boolean>;
 }
 
-/**
- * MongoSubmissionRepository — MongoDB implementation with resiliency
- *
- * Design Principles:
- * - Circuit Breaker: Prevent cascading failures
- * - Retry Logic: Handle transient failures
- * - Metrics: Track performance
- * - Error Handling: Graceful degradation
- */
 export class MongoSubmissionRepository implements ISubmissionRepository {
   private readonly circuitBreaker: CircuitBreaker;
   private readonly metrics: MetricsService;
@@ -61,9 +44,7 @@ export class MongoSubmissionRepository implements ISubmissionRepository {
     this.metrics = MetricsService.getInstance();
   }
 
-  /**
-   * Create new submission
-   */
+  
   public async create(data: {
     rawCode: string;
     serializedStructure: string;
@@ -89,9 +70,7 @@ export class MongoSubmissionRepository implements ISubmissionRepository {
     }
   }
 
-  /**
-   * Find submission by ID
-   */
+  
   public async findById(id: string): Promise<ISubmission | null> {
     const startTime = Date.now();
 
@@ -111,9 +90,7 @@ export class MongoSubmissionRepository implements ISubmissionRepository {
     }
   }
 
-  /**
-   * Find submissions by language with pagination
-   */
+  
   public async findByLanguage(
     language: string,
     options: { limit?: number; skip?: number } = {}
@@ -141,9 +118,7 @@ export class MongoSubmissionRepository implements ISubmissionRepository {
     }
   }
 
-  /**
-   * Find submissions by language and organization with pagination
-   */
+  
   public async findByLanguageAndOrg(
     language: string,
     organizationId: string,
@@ -173,9 +148,7 @@ export class MongoSubmissionRepository implements ISubmissionRepository {
     }
   }
 
-  /**
-   * Count submissions
-   */
+  
   public async count(language?: string): Promise<number> {
     const startTime = Date.now();
 
@@ -196,9 +169,7 @@ export class MongoSubmissionRepository implements ISubmissionRepository {
     }
   }
 
-  /**
-   * Delete submission by ID
-   */
+  
   public async delete(id: string): Promise<boolean> {
     const startTime = Date.now();
 
@@ -219,9 +190,7 @@ export class MongoSubmissionRepository implements ISubmissionRepository {
     }
   }
 
-  /**
-   * Check if submission exists
-   */
+  
   public async exists(id: string): Promise<boolean> {
     const startTime = Date.now();
 
@@ -243,11 +212,6 @@ export class MongoSubmissionRepository implements ISubmissionRepository {
   }
 }
 
-/**
- * InMemorySubmissionRepository — In-memory implementation for testing/dev
- *
- * Implements same interface, no circuit breaker needed
- */
 export class InMemorySubmissionRepository implements ISubmissionRepository {
   private store = new Map<
     string,
@@ -302,15 +266,13 @@ export class InMemorySubmissionRepository implements ISubmissionRepository {
     return results;
   }
 
-  /**
-   * In-memory implementation: organizationId is ignored (no isolation in dev mode)
-   */
+  
   public async findByLanguageAndOrg(
     language: string,
     organizationId: string,
     options: { limit?: number; skip?: number } = {}
   ): Promise<ISubmission[]> {
-    // In dev/test mode, organization isolation is not enforced
+    
     return this.findByLanguage(language, options);
   }
 
@@ -336,18 +298,13 @@ export class InMemorySubmissionRepository implements ISubmissionRepository {
     return this.store.has(id);
   }
 
-  /**
-   * Utility for testing
-   */
+  
   public clear(): void {
     this.store.clear();
     this.idCounter = 1;
   }
 }
 
-/**
- * Factory function to create appropriate repository
- */
 export function createSubmissionRepository(
   useInMemory = false
 ): ISubmissionRepository {

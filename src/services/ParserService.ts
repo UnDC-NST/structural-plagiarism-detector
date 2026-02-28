@@ -3,13 +3,6 @@ import Python from "tree-sitter-python";
 import { IParserService, SupportedLanguage } from "../types";
 import { AppError } from "../utils/AppError";
 
-/**
- * ParserService
- *
- * SRP  — Only responsible for turning raw source code into a Tree-sitter Tree.
- * OCP  — New languages added via registerLanguage without touching parse logic.
- * Singleton — One shared Tree-sitter parser instance per process.
- */
 export class ParserService implements IParserService {
   private static instance: ParserService;
 
@@ -45,10 +38,6 @@ export class ParserService implements IParserService {
   }
 }
 
-/**
- * UnsupportedLanguageError extends AppError so the centralised errorHandler
- * automatically maps it to HTTP 400 without any controller try/catch logic.
- */
 export class UnsupportedLanguageError extends AppError {
   constructor(lang: string) {
     super(400, `Unsupported language: "${lang}". Supported: python`);

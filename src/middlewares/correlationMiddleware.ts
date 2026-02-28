@@ -2,11 +2,6 @@ import { Request, Response, NextFunction } from "express";
 import { randomUUID } from "crypto";
 import { logger } from "../utils/logger";
 
-/**
- * Request Context — Stores request-scoped data
- *
- * Design: Async Local Storage pattern for request tracing
- */
 export interface RequestContext {
   correlationId: string;
   requestId: string;
@@ -16,7 +11,6 @@ export interface RequestContext {
   method: string;
 }
 
-// Extend Express Request type
 declare global {
   namespace Express {
     interface Request {
@@ -25,31 +19,19 @@ declare global {
   }
 }
 
-/**
- * correlationMiddleware — Tracks requests with correlation IDs
- *
- * Design Principles:
- * - Traceability: Track requests across services
- * - Debugging: Easy log correlation
- * - Performance: Track request duration
- *
- * Headers:
- * - X-Correlation-ID: Traces request across multiple services
- * - X-Request-ID: Unique ID for this specific request
- */
 export function correlationMiddleware(
   req: Request,
   res: Response,
   next: NextFunction
 ): void {
-  // Get or create correlation ID (from upstream service or new)
+  
   const correlationId =
     (req.headers["x-correlation-id"] as string) || randomUUID();
 
-  // Always create new request ID
+  
   const requestId = randomUUID();
 
-  // Create request context
+  
   req.context = {
     correlationId,
     requestId,
@@ -58,11 +40,11 @@ export function correlationMiddleware(
     method: req.method,
   };
 
-  // Add headers to response for downstream services
+  
   res.setHeader("X-Correlation-ID", correlationId);
   res.setHeader("X-Request-ID", requestId);
 
-  // Log request start
+  
   logger.info("Request started", {
     correlationId,
     requestId,
@@ -72,7 +54,7 @@ export function correlationMiddleware(
     userAgent: req.headers["user-agent"],
   });
 
-  // Track response
+  
   res.on("finish", () => {
     const duration = Date.now() - req.context!.startTime;
 
@@ -89,15 +71,8 @@ export function correlationMiddleware(
   next();
 }
 
-/**
- * ContextLogger — Logger with automatic context injection
- *
- * Design: Decorator pattern around base logger
- */
 export class ContextLogger {
-  /**
-   * Log with automatic correlation ID injection
-   */
+  
   public static info(
     message: string,
     meta: Record<string, unknown> = {},

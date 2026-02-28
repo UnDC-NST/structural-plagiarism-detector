@@ -3,16 +3,10 @@ import { IOrganizationService, CreateOrganizationDto } from "../services/Organiz
 import { AppError } from "../utils/AppError";
 import { logger } from "../utils/logger";
 
-/**
- * Controller for organization management endpoints
- */
 export class OrganizationController {
   constructor(private organizationService: IOrganizationService) {}
 
-  /**
-   * Create a new organization
-   * POST /api/v1/organizations
-   */
+  
   async create(req: Request, res: Response): Promise<void> {
     const { name, email, plan } = req.body;
 
@@ -47,10 +41,7 @@ export class OrganizationController {
     });
   }
 
-  /**
-    * Get current organization details
-   * GET /api/v1/organizations/me
-   */
+  
   async getCurrent(req: Request, res: Response): Promise<void> {
     const org = req.organization;
 
@@ -71,10 +62,7 @@ export class OrganizationController {
     });
   }
 
-  /**
-   * Get usage statistics for current organization
-   * GET /api/v1/organizations/usage
-   */
+  
   async getUsage(req: Request, res: Response): Promise<void> {
     const org = req.organization;
 

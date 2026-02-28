@@ -5,19 +5,8 @@ import {
   CorpusEntry,
 } from "../types";
 
-/**
- * SimilarityService
- *
- * SRP      — Only responsible for computing structural similarity.
- * Strategy — Cosine on frequency vectors; swap to MinHash by implementing
- *            ISimilarityService in a new class and updating container.ts only.
- *
- * Cosine similarity: cos(A,B) = (A·B) / (|A| × |B|)
- * Beats Jaccard because it weights token frequency, not just presence.
- * A file with 100 `if` nodes vs one with 1 `if` node → Jaccard=1, Cosine<1 ✓
- */
 export class SimilarityService implements ISimilarityService {
-  // ── ISimilarityService ──────────────────────────────────────────────────────
+  
 
   public computeSimilarity(a: FrequencyVector, b: FrequencyVector): number {
     if (a.size === 0 || b.size === 0) return 0;
@@ -32,11 +21,7 @@ export class SimilarityService implements ISimilarityService {
     return Math.min(1, Math.max(0, parseFloat(score.toFixed(4))));
   }
 
-  /**
-   * Find the most structurally similar corpus entry.
-   * Returns full metadata for interpretability.
-   * O(n) — acceptable up to ~10k; upgrade to MinHash+LSH beyond that.
-   */
+  
   public findMostSimilar(
     target: FrequencyVector,
     corpus: CorpusEntry[],
@@ -69,7 +54,7 @@ export class SimilarityService implements ISimilarityService {
     };
   }
 
-  /** Count of distinct token types present in both vectors. */
+  
   public sharedTokenCount(a: FrequencyVector, b: FrequencyVector): number {
     let count = 0;
     for (const key of a.keys()) {
@@ -78,9 +63,9 @@ export class SimilarityService implements ISimilarityService {
     return count;
   }
 
-  // ── Private helpers ─────────────────────────────────────────────────────────
+  
 
-  /** Σ(a[k] * b[k]) for all keys in a */
+  
   private dot(a: FrequencyVector, b: FrequencyVector): number {
     let sum = 0;
     for (const [token, countA] of a) {
@@ -89,7 +74,7 @@ export class SimilarityService implements ISimilarityService {
     return sum;
   }
 
-  /** √(Σ v² ) */
+  
   private magnitude(v: FrequencyVector): number {
     let sum = 0;
     for (const count of v.values()) sum += count * count;
@@ -105,7 +90,6 @@ export class SimilarityService implements ISimilarityService {
   }
 }
 
-/** Map cosine score to human-readable confidence label. */
 export function toConfidence(
   score: number,
 ): "high" | "medium" | "low" | "none" {

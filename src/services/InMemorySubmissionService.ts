@@ -1,20 +1,6 @@
 import { ISubmissionService, CorpusEntry } from "../types";
 import { randomUUID } from "crypto";
 
-/**
- * InMemorySubmissionService
- *
- * Implements ISubmissionService using a plain Map — zero external dependencies.
- * Use cases:
- *   - Local development without MongoDB installed
- *   - Unit testing (no DB mocking required)
- *   - CI pipelines
- *
- * DIP — Controllers depend on ISubmissionService only.
- *        Switching from Mongo → in-memory = one-line change in container.ts.
- *
- * Note: data is cleared on process restart. Not suitable for production.
- */
 export class InMemorySubmissionService implements ISubmissionService {
   private readonly store = new Map<
     string,
@@ -54,14 +40,12 @@ export class InMemorySubmissionService implements ISubmissionService {
     return results;
   }
 
-  /**
-   * In-memory implementation: organization isolation not supported
-   */
+  
   public async getAllSerializedForOrg(
     language: string,
     organizationId: string
   ): Promise<CorpusEntry[]> {
-    // In-memory mode doesn't support organization isolation
+    
     return this.getAllSerialized(language);
   }
 
@@ -73,7 +57,7 @@ export class InMemorySubmissionService implements ISubmissionService {
     return { _id: doc.id, language: doc.language, createdAt: doc.createdAt };
   }
 
-  /** Utility for testing — returns current store size. */
+  
   public size(): number {
     return this.store.size;
   }

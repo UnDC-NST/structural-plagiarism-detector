@@ -4,32 +4,22 @@ import { config } from "./config/Config";
 import { logger } from "./utils/logger";
 import { createShutdownHandler } from "./utils/ShutdownHandler";
 
-/**
- * Server Bootstrap
- *
- * System Design Features:
- * - Graceful Shutdown: Properly cleanup on termination signals
- * - Connection Pooling: MongoDB with optimal pool settings
- * - Error Recovery: Startup failure handling
- * - Health Monitoring: Automatic health checks
- */
-
 const PORT = config.port;
 const USE_INMEM = config.useInMemoryDb;
 
 async function bootstrap() {
   try {
-    // ── Database Connection ─────────────────────────────────────────────────
+    
     if (!USE_INMEM) {
       const mongoose = await import("mongoose");
 
-      // Configure connection options for production
+      
       await mongoose.default.connect(config.mongoUri, {
         maxPoolSize: config.mongoPoolSize,
         minPoolSize: Math.floor(config.mongoPoolSize / 2),
         connectTimeoutMS: config.mongoConnectTimeoutMs,
         serverSelectionTimeoutMS: config.mongoServerSelectionTimeoutMs,
-        // Automatically reconnect on connection loss
+        
         retryWrites: true,
         retryReads: true,
       });
@@ -39,7 +29,7 @@ async function bootstrap() {
         poolSize: config.mongoPoolSize 
       });
 
-      // Monitor MongoDB connection events
+      
       mongoose.connection.on("error", (err) => {
         logger.error("MongoDB connection error", { error: err.message });
       });
@@ -53,7 +43,7 @@ async function bootstrap() {
       });
     }
 
-    // ── Start HTTP Server ───────────────────────────────────────────────────
+    
     const server = app.listen(PORT, () => {
       logger.info("Server running", {
         port: PORT,
@@ -71,13 +61,13 @@ async function bootstrap() {
       });
     });
 
-    // ── Setup Graceful Shutdown ─────────────────────────────────────────────
+    
     const shutdownHandler = createShutdownHandler(server, USE_INMEM);
 
-    // Add custom cleanup tasks if needed
-    // shutdownHandler.addCleanupTask(async () => {
-    //   logger.info("Performing custom cleanup...");
-    // });
+    
+    
+    
+    
 
     logger.info("Graceful shutdown handler configured");
 
@@ -90,7 +80,6 @@ async function bootstrap() {
   }
 }
 
-// ── Start Application ─────────────────────────────────────────────────────────
 bootstrap().catch((err) => {
   logger.error("Bootstrap failed", { 
     message: err instanceof Error ? err.message : String(err),
