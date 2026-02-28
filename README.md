@@ -5,11 +5,6 @@
 > Built for **universities, coding bootcamps, and online learning platforms** handling hundreds or thousands of submissions.  
 > Production-ready with multi-tenancy, usage tracking, caching, circuit breakers, health checks, and observability.
 
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue)](https://www.typescriptlang.org/)
-[![Node.js](https://img.shields.io/badge/Node.js-18+-green)](https://nodejs.org/)
-[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED)](https://www.docker.com/)
-[![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
-
 ---
 
 ## 🏢 For Organizations

@@ -4,7 +4,7 @@ export interface ISubmission extends Document {
   rawCode: string;
   serializedStructure: string;
   language: string;
-  organizationId?: Types.ObjectId | string; // Optional for backward compatibility
+  organizationId?: Types.ObjectId | string; 
   createdAt: Date;
 }
 
@@ -17,13 +17,12 @@ const SubmissionSchema = new Schema<ISubmission>(
       type: Schema.Types.ObjectId,
       ref: "Organization",
       index: true,
-      required: false, // Optional for backward compatibility and in-memory mode
+      required: false, 
     },
   },
   { timestamps: { createdAt: true, updatedAt: false } },
 );
 
-// Compound index for efficient organization + language queries
 SubmissionSchema.index({ organizationId: 1, language: 1 });
 SubmissionSchema.index({ createdAt: -1 });
 

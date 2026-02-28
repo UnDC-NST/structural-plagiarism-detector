@@ -1,71 +1,57 @@
 import { z } from "zod";
 
-/**
- * Config — Type-safe configuration with runtime validation.
- *
- * Design Principles:
- * - Fail-fast: Invalid config throws on startup, not at runtime
- * - Type-safe: All config values have explicit types
- * - Environment-aware: Different configs for dev/staging/prod
- * - Immutable: Config object is frozen after creation
- */
-
-// ── Validation Schema ─────────────────────────────────────────────────────────
 const ConfigSchema = z.object({
-  // Server
+  
   port: z.coerce.number().int().min(1).max(65535).default(3000),
   nodeEnv: z.enum(["development", "production", "test"]).default("development"),
   
-  // Database
+  
   mongoUri: z.string().url().default("mongodb://localhost:27017/plagiarism-detector"),
   useInMemoryDb: z.coerce.boolean().default(false),
   
-  // MongoDB Connection Pool
+  
   mongoPoolSize: z.coerce.number().int().min(1).max(100).default(10),
   mongoConnectTimeoutMs: z.coerce.number().int().min(1000).default(10000),
   mongoServerSelectionTimeoutMs: z.coerce.number().int().min(1000).default(5000),
   
-  // Authentication
+  
   apiKey: z.string().min(1, "API_KEY is required in production"),
   
-  // Rate Limiting
-  rateLimitWindowMs: z.coerce.number().int().min(1000).default(60_000), // 1 minute
+  
+  rateLimitWindowMs: z.coerce.number().int().min(1000).default(60_000), 
   rateLimitMaxRequests: z.coerce.number().int().min(1).default(100),
   
-  // CORS
+  
   allowedOrigins: z.string().transform(val => val.split(",")).default("http://localhost:3000"),
   
-  // Cache
+  
   cacheEnabled: z.coerce.boolean().default(true),
-  cacheTtlSeconds: z.coerce.number().int().min(0).default(300), // 5 minutes
-  cacheMaxSize: z.coerce.number().int().min(100).default(1000), // Max entries
+  cacheTtlSeconds: z.coerce.number().int().min(0).default(300), 
+  cacheMaxSize: z.coerce.number().int().min(100).default(1000), 
   
-  // Circuit Breaker
-  circuitBreakerThreshold: z.coerce.number().int().min(1).default(5), // failures before open
-  circuitBreakerTimeout: z.coerce.number().int().min(1000).default(60000), // 1 minute
   
-  // Performance
+  circuitBreakerThreshold: z.coerce.number().int().min(1).default(5), 
+  circuitBreakerTimeout: z.coerce.number().int().min(1000).default(60000), 
+  
+  
   maxCodeSizeBytes: z.coerce.number().int().min(1000).default(50_000),
   
-  // Logging
+  
   logLevel: z.enum(["debug", "info", "warn", "error"]).default("info"),
   
-  // Health Check
-  healthCheckInterval: z.coerce.number().int().min(5000).default(30000), // 30 seconds
+  
+  healthCheckInterval: z.coerce.number().int().min(5000).default(30000), 
 });
 
 export type AppConfig = z.infer<typeof ConfigSchema>;
 
-/**
- * Configuration class with singleton pattern
- */
 export class Config {
   private static instance: Config;
   private readonly config: Readonly<AppConfig>;
 
   private constructor() {
     try {
-      // Validate environment variables
+      
       this.config = Object.freeze(
         ConfigSchema.parse({
           port: process.env.PORT,
@@ -90,7 +76,7 @@ export class Config {
         })
       );
 
-      // Production-specific validations
+      
       if (this.config.nodeEnv === "production") {
         if (!process.env.API_KEY || process.env.API_KEY.length < 32) {
           throw new Error("Production requires API_KEY with at least 32 characters");
@@ -132,5 +118,4 @@ export class Config {
   }
 }
 
-// Export singleton instance
 export const config = Config.getInstance().get();

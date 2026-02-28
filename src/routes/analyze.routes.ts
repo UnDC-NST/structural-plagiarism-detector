@@ -3,7 +3,7 @@ import { AnalyzeController } from "../controllers/AnalyzeController";
 
 export function createAnalyzeRouter(controller: AnalyzeController): Router {
   const router = Router();
-  // controller.handle is already wrapped with asyncHandler
+  
   router.post("/", controller.handle);
   return router;
 }

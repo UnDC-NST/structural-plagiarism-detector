@@ -11,20 +11,6 @@ import { ICache, CacheKeyGenerator } from "./CacheService";
 import { MetricsService } from "./MetricsService";
 import { logger } from "../utils/logger";
 
-/**
- * EnhancedSubmissionService — Submission service with caching and metrics
- *
- * Design Principles:
- * - Caching: Reduce database load
- * - Metrics: Track performance
- * - Repository Pattern: Clean separation of data access
- * - DIP: Depends on abstractions (interfaces)
- *
- * Features:
- * - Cache serialized structures to avoid re-parsing
- * - Track cache hit rates
- * - Graceful degradation if cache fails
- */
 export class EnhancedSubmissionService implements ISubmissionService {
   constructor(
     private readonly repository: ISubmissionRepository,
@@ -35,9 +21,7 @@ export class EnhancedSubmissionService implements ISubmissionService {
     private readonly metrics?: MetricsService
   ) {}
 
-  /**
-   * Save submission with caching
-   */
+  
   public async saveSubmission(
     rawCode: string,
     serialized: string,
@@ -45,7 +29,7 @@ export class EnhancedSubmissionService implements ISubmissionService {
     organizationId?: string,
   ): Promise<string> {
     try {
-      // Save to database via repository
+      
       const id = await this.repository.create({
         rawCode,
         serializedStructure: serialized,
@@ -53,13 +37,13 @@ export class EnhancedSubmissionService implements ISubmissionService {
         organizationId,
       });
 
-      // Cache the serialized structure
+      
       if (this.cache) {
         try {
           const cacheKey = CacheKeyGenerator.forSerialization(rawCode, language);
           await this.cache.set(cacheKey, serialized);
         } catch (error) {
-          // Cache failure shouldn't break the operation
+          
           logger.warn("Failed to cache submission", {
             error: error instanceof Error ? error.message : String(error),
           });
@@ -76,12 +60,10 @@ export class EnhancedSubmissionService implements ISubmissionService {
     }
   }
 
-  /**
-   * Get all serialized structures with caching
-   */
+  
   public async getAllSerialized(language: string): Promise<CorpusEntry[]> {
     try {
-      // Try cache first
+      
       const cacheKey = `corpus:${language}`;
       if (this.cache) {
         const cached = await this.cache.get(cacheKey);
@@ -92,7 +74,7 @@ export class EnhancedSubmissionService implements ISubmissionService {
         this.metrics?.recordCacheMiss();
       }
 
-      // Fetch from database
+      
       const submissions = await this.repository.findByLanguage(language);
 
       const corpus: CorpusEntry[] = submissions.map((sub) => ({
@@ -100,10 +82,10 @@ export class EnhancedSubmissionService implements ISubmissionService {
         serialized: sub.serializedStructure,
       }));
 
-      // Cache the result
+      
       if (this.cache && corpus.length > 0) {
         try {
-          await this.cache.set(cacheKey, JSON.stringify(corpus), 300); // 5 min TTL
+          await this.cache.set(cacheKey, JSON.stringify(corpus), 300); 
         } catch (error) {
           logger.warn("Failed to cache corpus", {
             error: error instanceof Error ? error.message : String(error),
@@ -121,15 +103,13 @@ export class EnhancedSubmissionService implements ISubmissionService {
     }
   }
 
-  /**
-   * Get all serialized structures for an organization with caching
-   */
+  
   public async getAllSerializedForOrg(
     language: string,
     organizationId: string
   ): Promise<CorpusEntry[]> {
     try {
-      // Try cache first
+      
       const cacheKey = `corpus:${language}:${organizationId}`;
       if (this.cache) {
         const cached = await this.cache.get(cacheKey);
@@ -140,7 +120,7 @@ export class EnhancedSubmissionService implements ISubmissionService {
         this.metrics?.recordCacheMiss();
       }
 
-      // Fetch from database
+      
       const submissions = await this.repository.findByLanguageAndOrg(language, organizationId);
 
       const corpus: CorpusEntry[] = submissions.map((sub) => ({
@@ -148,10 +128,10 @@ export class EnhancedSubmissionService implements ISubmissionService {
         serialized: sub.serializedStructure,
       }));
 
-      // Cache the result
+      
       if (this.cache && corpus.length > 0) {
         try {
-          await this.cache.set(cacheKey, JSON.stringify(corpus), 300); // 5 min TTL
+          await this.cache.set(cacheKey, JSON.stringify(corpus), 300); 
         } catch (error) {
           logger.warn("Failed to cache organization corpus", {
             error: error instanceof Error ? error.message : String(error),
@@ -170,9 +150,7 @@ export class EnhancedSubmissionService implements ISubmissionService {
     }
   }
 
-  /**
-   * Find submission by ID
-   */
+  
   public async findById(
     id: string
   ): Promise<{ _id: string; language: string; createdAt: Date } | null> {
@@ -197,14 +175,12 @@ export class EnhancedSubmissionService implements ISubmissionService {
     }
   }
 
-  /**
-   * Parse and serialize code with caching
-   */
+  
   public async parseAndSerialize(
     code: string,
     language: SupportedLanguage
   ): Promise<string> {
-    // Check cache first
+    
     if (this.cache) {
       const cacheKey = CacheKeyGenerator.forSerialization(code, language);
       const cached = await this.cache.get(cacheKey);
@@ -216,12 +192,12 @@ export class EnhancedSubmissionService implements ISubmissionService {
       this.metrics?.recordCacheMiss();
     }
 
-    // Parse and serialize
+    
     const tree = this.parser.parse(code, language);
     const ir = this.normalizer.normalize(tree);
     const serialized = this.serializer.serialize(ir);
 
-    // Cache the result
+    
     if (this.cache) {
       try {
         const cacheKey = CacheKeyGenerator.forSerialization(code, language);

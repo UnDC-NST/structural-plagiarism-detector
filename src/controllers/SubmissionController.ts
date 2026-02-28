@@ -11,25 +11,11 @@ import { IOrganizationService } from "../services/OrganizationService";
 import { asyncHandler } from "../utils/asyncHandler";
 import { AppError } from "../utils/AppError";
 
-// ── Validation schema ─────────────────────────────────────────────────────────
 const CreateSchema = z.object({
   code: z.string().min(1).max(50_000),
   language: z.enum(["python"]),
 });
 
-/**
- * SubmissionController
- *
- * DIP — All services injected via constructor (interfaces only).
- * SRP — Handles submission creation and retrieval. No similarity logic.
- *
- * Error handling via asyncHandler + centralised errorHandler:
- *   ZodError          → 400 (validation failed)
- *   AppError(400)     → 400 (unsupported language)
- *   AppError(404)     → 404 (submission not found)
- *   AppError(429)     → 429 (usage limit exceeded)
- *   Unknown errors    → 500
- */
 export class SubmissionController {
   constructor(
     private readonly parser: IParserService,
@@ -39,11 +25,11 @@ export class SubmissionController {
     private readonly organizationService?: IOrganizationService,
   ) {}
 
-  /** POST /api/v1/submissions — parse + store */
+  
   public readonly create = asyncHandler(async (req: Request, res: Response) => {
     const org = req.organization;
     
-    // Check organization submission limits
+    
     if (org && this.organizationService) {
       this.organizationService.checkLimits(org, "submission");
     }
@@ -61,7 +47,7 @@ export class SubmissionController {
       org?._id?.toString(),
     );
 
-    // Track organization usage
+    
     if (org && this.organizationService) {
       await this.organizationService.updateUsage(org._id.toString(), "submission");
     }
@@ -69,7 +55,7 @@ export class SubmissionController {
     res.status(201).json({ submissionId });
   });
 
-  /** GET /api/v1/submissions/:id — fetch by ID */
+  
   public readonly getById = asyncHandler(
     async (req: Request, res: Response) => {
       const { id } = req.params;

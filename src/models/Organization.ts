@@ -1,9 +1,5 @@
 import mongoose, { Schema, Document } from "mongoose";
 
-/**
- * Organization/Tenant model
- * Represents an organization using the plagiarism detection service
- */
 export interface IOrganization extends Document {
   name: string;
   apiKey: string;
@@ -11,7 +7,7 @@ export interface IOrganization extends Document {
   plan: "free" | "basic" | "pro" | "enterprise";
   isActive: boolean;
   
-  // Usage limits based on plan
+  
   limits: {
     maxSubmissionsPerMonth: number;
     maxComparisonsPerMonth: number;
@@ -19,14 +15,14 @@ export interface IOrganization extends Document {
     maxBulkFiles: number;
   };
   
-  // Current usage tracking
+  
   usage: {
     submissionsThisMonth: number;
     comparisonsThisMonth: number;
     lastResetDate: Date;
   };
   
-  // Metadata
+  
   createdAt: Date;
   updatedAt: Date;
   metadata?: Record<string, any>;
@@ -66,19 +62,19 @@ const OrganizationSchema = new Schema<IOrganization>(
     limits: {
       maxSubmissionsPerMonth: {
         type: Number,
-        default: 100, // Free tier default
+        default: 100, 
       },
       maxComparisonsPerMonth: {
         type: Number,
-        default: 500, // Free tier default
+        default: 500, 
       },
       maxFileSizeBytes: {
         type: Number,
-        default: 1048576, // 1MB default
+        default: 1048576, 
       },
       maxBulkFiles: {
         type: Number,
-        default: 10, // Free tier default
+        default: 10, 
       },
     },
     usage: {
@@ -105,12 +101,10 @@ const OrganizationSchema = new Schema<IOrganization>(
   }
 );
 
-// Index for efficient API key lookups
 OrganizationSchema.index({ apiKey: 1 });
 OrganizationSchema.index({ email: 1 });
 OrganizationSchema.index({ isActive: 1 });
 
-// Method to check if organization has exceeded limits
 OrganizationSchema.methods.hasExceededSubmissionLimit = function (): boolean {
   return this.usage.submissionsThisMonth >= this.limits.maxSubmissionsPerMonth;
 };
@@ -119,12 +113,11 @@ OrganizationSchema.methods.hasExceededComparisonLimit = function (): boolean {
   return this.usage.comparisonsThisMonth >= this.limits.maxComparisonsPerMonth;
 };
 
-// Method to reset monthly usage if needed
 OrganizationSchema.methods.resetUsageIfNeeded = function (): void {
   const now = new Date();
   const lastReset = new Date(this.usage.lastResetDate);
   
-  // Reset if it's a new month
+  
   if (
     now.getMonth() !== lastReset.getMonth() ||
     now.getFullYear() !== lastReset.getFullYear()
@@ -135,7 +128,6 @@ OrganizationSchema.methods.resetUsageIfNeeded = function (): void {
   }
 };
 
-// Method to increment usage
 OrganizationSchema.methods.incrementSubmissionUsage = async function (): Promise<void> {
   this.usage.submissionsThisMonth += 1;
   await this.save();

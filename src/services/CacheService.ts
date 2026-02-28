@@ -1,13 +1,5 @@
 import { createHash } from "crypto";
 
-/**
- * ICache — Generic cache interface for dependency inversion
- *
- * Design Principles:
- * - Strategy Pattern: Different cache implementations (Memory, Redis, etc.)
- * - Generic: Type-safe caching for any value type
- * - TTL Support: Automatic expiration
- */
 export interface ICache<T> {
   get(key: string): Promise<T | null>;
   set(key: string, value: T, ttlSeconds?: number): Promise<void>;
@@ -17,9 +9,6 @@ export interface ICache<T> {
   has(key: string): Promise<boolean>;
 }
 
-/**
- * CacheEntry — Internal cache entry with metadata
- */
 interface CacheEntry<T> {
   value: T;
   expiresAt: number;
@@ -27,20 +16,6 @@ interface CacheEntry<T> {
   hits: number;
 }
 
-/**
- * InMemoryCacheService — LRU cache with TTL support
- *
- * Design Principles:
- * - Singleton: One shared cache across the application
- * - LRU Eviction: Least Recently Used items removed first when full
- * - TTL Support: Automatic expiration of stale entries
- * - Thread-safe: Can handle concurrent operations
- * - Observable: Provides cache statistics
- *
- * Scalability:
- * - For multi-instance deployment, replace with Redis
- * - Current impl suitable for single-instance or read-heavy workloads
- */
 export class InMemoryCacheService<T> implements ICache<T> {
   private cache: Map<string, CacheEntry<T>>;
   private readonly maxSize: number;
@@ -62,14 +37,14 @@ export class InMemoryCacheService<T> implements ICache<T> {
       return null;
     }
 
-    // Check if expired
+    
     if (Date.now() > entry.expiresAt) {
       this.cache.delete(key);
       this.misses++;
       return null;
     }
 
-    // Update LRU: move to end
+    
     this.cache.delete(key);
     entry.hits++;
     this.cache.set(key, entry);
@@ -83,7 +58,7 @@ export class InMemoryCacheService<T> implements ICache<T> {
     value: T,
     ttlSeconds?: number
   ): Promise<void> {
-    // Evict if at capacity and key doesn't exist
+    
     if (this.cache.size >= this.maxSize && !this.cache.has(key)) {
       this.evictLRU();
     }
@@ -110,7 +85,7 @@ export class InMemoryCacheService<T> implements ICache<T> {
   }
 
   public async size(): Promise<number> {
-    // Clean expired entries first
+    
     await this.cleanExpired();
     return this.cache.size;
   }
@@ -127,9 +102,7 @@ export class InMemoryCacheService<T> implements ICache<T> {
     return true;
   }
 
-  /**
-   * Get cache statistics for monitoring
-   */
+  
   public getStats() {
     const total = this.hits + this.misses;
     const hitRate = total > 0 ? (this.hits / total) * 100 : 0;
@@ -143,9 +116,7 @@ export class InMemoryCacheService<T> implements ICache<T> {
     };
   }
 
-  /**
-   * Evict least recently used entry (first in Map)
-   */
+  
   private evictLRU(): void {
     const firstKey = this.cache.keys().next().value;
     if (firstKey) {
@@ -153,9 +124,7 @@ export class InMemoryCacheService<T> implements ICache<T> {
     }
   }
 
-  /**
-   * Remove all expired entries (maintenance operation)
-   */
+  
   private async cleanExpired(): Promise<void> {
     const now = Date.now();
     const keysToDelete: string[] = [];
@@ -170,15 +139,8 @@ export class InMemoryCacheService<T> implements ICache<T> {
   }
 }
 
-/**
- * CacheKeyGenerator — Utility for generating consistent cache keys
- *
- * Design: Deterministic hash-based keys to ensure consistency
- */
 export class CacheKeyGenerator {
-  /**
-   * Generate cache key for code analysis
-   */
+  
   public static forCodeAnalysis(code: string, language: string): string {
     const hash = createHash("sha256")
       .update(code)
@@ -188,15 +150,13 @@ export class CacheKeyGenerator {
     return `analysis:${language}:${hash}`;
   }
 
-  /**
-   * Generate cache key for code comparison
-   */
+  
   public static forCodeComparison(
     codeA: string,
     codeB: string,
     language: string
   ): string {
-    // Sort codes to make comparison symmetric (A→B === B→A)
+    
     const [first, second] = [codeA, codeB].sort();
     const hash = createHash("sha256")
       .update(first)
@@ -207,9 +167,7 @@ export class CacheKeyGenerator {
     return `compare:${language}:${hash}`;
   }
 
-  /**
-   * Generate cache key for serialized code structure
-   */
+  
   public static forSerialization(code: string, language: string): string {
     const hash = createHash("sha256")
       .update(code)
@@ -220,14 +178,11 @@ export class CacheKeyGenerator {
   }
 }
 
-/**
- * Factory function for cache service (enables easy swapping to Redis)
- */
 export function createCacheService<T>(
   maxSize?: number,
   ttlSeconds?: number
 ): ICache<T> {
-  // In production with multiple instances, replace with Redis:
-  // return new RedisCacheService<T>(redisClient, ttlSeconds);
+  
+  
   return new InMemoryCacheService<T>(maxSize, ttlSeconds);
 }
